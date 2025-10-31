@@ -18,7 +18,7 @@ def mostrar_estadisticas():
 
 def mostrar_creditos():
     print("\n--- CRÉDITOS ---")
-    print("Juego desarrollado por: [Tu nombre] y [Tu compañero]")
+    print("Juego desarrollado por: Zalazar Nestor y Romero Santiago")
     print("Materia: Programación I - UTN")
     print("Año: 2025")
     print("Temática: League of Legends")
