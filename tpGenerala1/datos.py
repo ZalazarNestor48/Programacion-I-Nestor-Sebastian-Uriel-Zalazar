@@ -1,8 +1,8 @@
 cartas = [
-    {'nombre': 'Ahri', 'puntos': 1},
-    {'nombre': 'Garen', 'puntos': 2},
-    {'nombre': 'Lux', 'puntos': 3},
-    {'nombre': 'Yasuo', 'puntos': 4},
-    {'nombre': 'Sona', 'puntos': 5},
-    {'nombre': 'Darius', 'puntos': 6},
+    {'nombre': 'Teemo', 'puntos': 1, 'imagen': 'assets/asset1.jpg'},
+    {'nombre': 'Garen', 'puntos': 2, 'imagen': 'assets/asset2.jpg'},
+    {'nombre': 'Lux', 'puntos': 3, 'imagen': 'assets/asset3.jpg'},
+    {'nombre': 'Yasuo', 'puntos': 4, 'imagen': 'assets/asset4.jpg'},
+    {'nombre': 'Zed', 'puntos': 5, 'imagen': 'assets/asset5.jpg'},
+    {'nombre': 'Akali', 'puntos': 6, 'imagen': 'assets/asset6.jpg'},
 ]
