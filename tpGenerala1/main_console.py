@@ -4,7 +4,7 @@ from juego import jugar_consola
 def mostrar_creditos():
     print('\\n--- Créditos ---')
     print('Trabajo Práctico: Generala Temática')
-    print('Autor: Nestor Zalazar')
+    print('Autor: Nestor Zalazar / Romero Santiago')
     print('Materia: Programación I')
     print('-----------------\\n')
 

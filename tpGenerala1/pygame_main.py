@@ -5,10 +5,18 @@ from puntuacion import calcular_jugada
 from archivos import guardar_puntaje, top_n
 import pygame_juego
 
+
+def iniciar_musica():
+    pygame.mixer.init()
+    pygame.mixer.music.load("assets/musica/Legends Never Die (ft. Against The Current) [OFFICIAL AUDIO]  Worlds 2017 - League of Legends.mp3")
+    pygame.mixer.music.play(-1)
+
+
 SCREEN_W, SCREEN_H = 960, 640
 
 def main():
     pygame.init()
+    iniciar_musica()
     screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
     pygame.display.set_caption('Generala Temática - Pygame')
     clock = pygame.time.Clock()

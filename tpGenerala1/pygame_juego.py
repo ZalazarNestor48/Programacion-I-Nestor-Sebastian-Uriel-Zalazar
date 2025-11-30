@@ -2,13 +2,11 @@ import os
 import pygame
 import random
 from pygame.locals import *
-
-BASE_DIR = os.path.dirname(__file__)
-IMG_DIR = os.path.join(BASE_DIR, "imagenes")
+from datos import cartas
 
 SCREEN_W, SCREEN_H = 960, 640
 
-# Colors (LoL-like)
+#colores
 BG = (28, 39, 54)
 PANEL = (18, 24, 34)
 GOLD = (235, 190, 70)
@@ -22,14 +20,11 @@ FPS = 60
 
 
 def load_image_for(name):
-    path = os.path.join(IMG_DIR, f"{name}.png")
+    path = f"assets/{name}.png"
     if os.path.exists(path):
-        try:
-            img = pygame.image.load(path).convert_alpha()
-            return pygame.transform.smoothscale(img, (100,100))
-        except Exception:
-            pass
-    surf = pygame.Surface((100,100), pygame.SRCALPHA)
+        img = pygame.image.load(path).convert_alpha()
+        return pygame.transform.smoothscale(img, (100,100))
+    surf = pygame.Surface((100, 100), pygame.SRCALPHA)
     surf.fill((240,240,240))
     pygame.draw.rect(surf, (70,70,70), surf.get_rect(), 3, border_radius=8)
     f = pygame.font.SysFont(None, 18)
@@ -86,8 +81,7 @@ def draw_button(screen, font, rect, text, mouse_pos, mouse_pressed, col, hover, 
     pygame.draw.rect(screen, color, rect, border_radius=8)
     pygame.draw.rect(screen, GOLD_DARK, rect, 2, border_radius=8)
     txt = font.render(text, True, text_color)
-    screen.blit(txt, (rect.x + (rect.w - txt.get_width())//2,
-                      rect.y + (rect.h - txt.get_height())//2))
+    screen.blit(txt, (rect.x + (rect.w - txt.get_width())//2,rect.y + (rect.h - txt.get_height())//2))
     return is_hover and mouse_pressed[0]
 
 
@@ -154,6 +148,105 @@ def show_stats(screen, font, top_n_fn):
         clock.tick(FPS)
 
 
+def obtener_carta_por_puntaje(puntaje: int): 
+    for carta in cartas: 
+        if carta["puntos"] == puntaje: 
+            return carta
+    return None 
+
+def pintar_puntaje(val, inner, fuente_num_peq, pantalla):
+    carta = obtener_carta_por_puntaje(val)
+    if carta is None:
+        puntos = val
+    else:
+        puntos = carta.get("puntos", val)
+    
+    num_peq = fuente_num_peq.render(str(puntos) if puntos > 0 else "?", True, WHITE)
+    num_peq_x = inner.x + inner.width - num_peq.get_width() - 8
+    num_peq_y = inner.y + 6
+    pantalla.blit(num_peq, (num_peq_x, num_peq_y))
+
+def pintar_cartas(dados, screen, estado_juego, botones, guardados=None):
+    DADO_W, DADO_H = 100, 140
+    espacio = 12
+    total_w = DADO_W * len(dados) + espacio * (len(dados) - 1)
+    start_x = (1000 - total_w) // 2
+    y = 70
+    SMOOTHING = 0.25
+    HOVER_TARGET = 1.2
+    fuente_nombre = pygame.font.Font(None, 24)
+    fuente_num_peq = pygame.font.Font(None, 28)
+
+    if guardados is None:
+        guardados = []
+
+    scales = estado_juego.get("hover_scales")
+    if not isinstance(scales, list) or len(scales) != len(dados):
+        scales = [1.0] * len(dados)
+
+    mx, my = pygame.mouse.get_pos()
+    hand_cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_HAND)
+    arrow_cursor = pygame.cursors.Cursor(pygame.SYSTEM_CURSOR_ARROW)
+    esta_el_cursor_encima = False
+
+    botones.clear()
+    for i, val in enumerate(dados):
+        carta = obtener_carta_por_puntaje(val["puntos"]) 
+        if carta is None:
+            continue
+
+        x = start_x + i * (DADO_W + espacio)
+        rect = pygame.Rect(x, y, DADO_W, DADO_H)
+        pygame.draw.rect(screen, (0, 0, 0), rect, border_radius=12)
+        inner = rect.inflate(-6, -6)
+
+        if i < len(guardados) and guardados[i]:
+            pygame.draw.rect(screen, GOLD, rect, 3, border_radius=12)
+
+        imagen_path = carta.get("imagen")
+        if imagen_path:
+            if os.path.exists(imagen_path):
+                surf = pygame.image.load(imagen_path).convert_alpha()
+            else:
+                surf = load_image_for(carta["nombre"])
+
+        if inner.collidepoint(mx, my):
+            target = HOVER_TARGET
+            esta_el_cursor_encima = True
+        else:
+            target = 1.0
+        new_scale = scales[i] + (target - scales[i]) * SMOOTHING
+        scales[i] = new_scale
+
+        new_w = max(1, int(inner.width * new_scale))
+        new_h = max(1, int(inner.height * new_scale))
+        fondo_carta = pygame.transform.smoothscale(surf, (new_w, new_h))
+        clip_surf = pygame.Surface(inner.size, pygame.SRCALPHA)
+        offset_x = (inner.width - new_w) // 2
+        offset_y = (inner.height - new_h) // 2
+        clip_surf.blit(fondo_carta, (offset_x, offset_y))
+        screen.blit(clip_surf, inner.topleft)
+
+        pintar_puntaje(val["puntos"], inner, fuente_num_peq, screen)
+
+        nombre = carta["nombre"]
+        nombre_txt = fuente_nombre.render(nombre, True, WHITE)
+        FLAG_H = 34
+        FLAG_COLOR = (10, 90, 220)
+        flag_rect = pygame.Rect(inner.x, inner.y + inner.height - FLAG_H, inner.width, FLAG_H)
+        pygame.draw.rect(screen, FLAG_COLOR, flag_rect, border_radius=8)
+        nombre_x = inner.x + 8
+        nombre_y = flag_rect.y + (FLAG_H - nombre_txt.get_height()) // 2
+        screen.blit(nombre_txt, (nombre_x, nombre_y))
+
+        botones.append({"accion": f"lock_{i}", "rect": rect})
+
+    estado_juego["hover_scales"] = scales
+    if esta_el_cursor_encima:
+        pygame.mouse.set_cursor(hand_cursor)
+    else:
+        pygame.mouse.set_cursor(arrow_cursor)
+
 # ============================
 #        GAME FINAL
 # ============================
@@ -175,31 +268,80 @@ def run_game(screen, clock, font, tirar_dados_fn, calcular_jugada_fn, guardar_fn
         rolling = False
         frames = 0
 
+        estado_juego = {}          #estado para pintar_cartas (hover scales, etc)
         running_turn = True
         while running_turn:
 
             mouse_pos = pygame.mouse.get_pos()
             mouse_pressed = pygame.mouse.get_pressed()
 
+            #animacion
+            if rolling and frames > 0:
+                for i in range(5):
+                    if not guardados[i]:
+                        #tirar dados
+                        dados[i] = random.choice(tirar_dados_fn())
+                frames -= 1
+                if frames == 0:
+                    tiros -= 1
+                    rolling = False
+
+            #draw
+            screen.fill(BG)
+
+            header = font.render(f"Turno {turno+1} - Puntos: {puntos_totales}", True, GOLD)
+            screen.blit(header, (40,40))
+
+            #pinta cartas
+            botones = []
+            pintar_cartas(dados, screen, estado_juego, botones, guardados)
+
+            #planilla izquierda
+            p_x = 40
+            p_y = 290
+            panel_h = 330
+            pygame.draw.rect(screen, PANEL, (p_x - 10, p_y - 10, 260, panel_h), border_radius=12)
+
+            for idx,c in enumerate(planilla.keys()):
+                r = pygame.Rect(p_x, p_y + idx*32, 220, 28)
+                pygame.draw.rect(screen, PANEL, r, border_radius=6)
+                pygame.draw.rect(screen, GOLD_DARK, r, 2, border_radius=6)
+                val = planilla[c]
+                t = f"{c}: {'-' if val is None else val}"
+                screen.blit(font.render(t, True, WHITE), (r.x + 10, r.y + 4))
+
+            #buttons
+            btn_tirar = pygame.Rect(SCREEN_W - 200, 420, 140, 48)
+            btn_anotar = pygame.Rect(SCREEN_W - 200, 480, 140, 48)
+
+            draw_button(screen, font, btn_tirar, f"Tirar ({tiros})", mouse_pos, mouse_pressed,
+                        BTN_BLUE, (min(255,BTN_BLUE[0]+20), min(255,BTN_BLUE[1]+20), min(255,BTN_BLUE[2]+20)))
+
+            draw_button(screen, font, btn_anotar, "Anotar", mouse_pos, mouse_pressed,
+                        BTN_RED, (min(255,BTN_RED[0]+20), min(255,BTN_RED[1]+20), min(255,BTN_RED[2]+20)))
+
+            pygame.display.flip()
+            clock.tick(FPS)
+
+            #eventos, procesa dsp de clickear
             for ev in pygame.event.get():
                 if ev.type == QUIT: return
                 if ev.type == KEYDOWN and ev.key == K_ESCAPE: return
 
-                if ev.type == MOUSEBUTTONDOWN:
+                if ev.type == MOUSEBUTTONDOWN and ev.button == 1:
                     mx,my = ev.pos
 
-                    # ---- CLICK EN DADOS ----
-                    start_x = 60
-                    y_dados = 120
-                    for i,d in enumerate(dados):
-                        r = pygame.Rect(start_x + i*140, y_dados, 100,100)
-                        if r.collidepoint(mx,my):
-                            guardados[i] = not guardados[i]
+                    #click en dados
+                    for b in botones:
+                        if b["rect"].collidepoint(mx,my):
+                            if b["accion"].startswith("lock_"):
+                                parts = b["accion"].split("_", 1)
+                                if len(parts) == 2 and parts[1].isdigit():
+                                    idx = int(parts[1])
+                                    if 0 <= idx < len(guardados):
+                                        guardados[idx] = not guardados[idx]
 
-                    # ---- BOTONES ----
-                    btn_tirar = pygame.Rect(SCREEN_W - 200, 420, 140, 48)
-                    btn_anotar = pygame.Rect(SCREEN_W - 200, 480, 140, 48)
-
+                    #botones de tirar y anoitar
                     if btn_tirar.collidepoint(mx,my) and tiros > 0:
                         rolling = True
                         frames = 10
@@ -216,9 +358,7 @@ def run_game(screen, clock, font, tirar_dados_fn, calcular_jugada_fn, guardar_fn
                             puntos_totales += pts
                             running_turn = False
 
-                    # ---- CLICK EN PLANILLA ----
-                    p_x = 40
-                    p_y = 290  # <---------------------- ALTURA SUBIDA
+                    #click en planilla
                     for idx,c in enumerate(planilla.keys()):
                         slot = pygame.Rect(p_x, p_y + idx*32, 220, 28)
                         if slot.collidepoint(mx,my) and planilla[c] is None:
@@ -229,60 +369,6 @@ def run_game(screen, clock, font, tirar_dados_fn, calcular_jugada_fn, guardar_fn
                             planilla[c] = pts
                             puntos_totales += pts
                             running_turn = False
-
-            # ---- ANIMACIÓN ----
-            if rolling and frames > 0:
-                for i in range(5):
-                    if not guardados[i]:
-                        dados[i] = random.choice(tirar_dados_fn())
-                frames -= 1
-                if frames == 0:
-                    tiros -= 1
-                    rolling = False
-
-            # ======= DRAW =======
-            screen.fill(BG)
-
-            header = font.render(f"Turno {turno+1} - Puntos: {puntos_totales}", True, GOLD)
-            screen.blit(header, (40,40))
-
-            # ---- DADOS ARRIBA ----
-            start_x = 60
-            y_dados = 120
-            for i,d in enumerate(dados):
-                img = load_image_for(d["nombre"])
-                screen.blit(img, (start_x + i*140, y_dados))
-                if guardados[i]:
-                    pygame.draw.rect(screen, GOLD, (start_x + i*140 -2, y_dados -2, 104,104), 4, border_radius=8)
-                lbl = font.render(f"{d['nombre']} ({d['puntos']})", True, WHITE)
-                screen.blit(lbl, (start_x + i*140, y_dados + 110))
-
-            # ---- PLANILLA (ARRIBA A LA IZQUIERDA, SUBIDA) ----
-            p_x = 40
-            p_y = 290  # <---------------------- ALTURA AJUSTADA PERFECTA
-            panel_h = 330
-            pygame.draw.rect(screen, PANEL, (p_x - 10, p_y - 10, 260, panel_h), border_radius=12)
-
-            for idx,c in enumerate(planilla.keys()):
-                r = pygame.Rect(p_x, p_y + idx*32, 220, 28)
-                pygame.draw.rect(screen, PANEL, r, border_radius=6)
-                pygame.draw.rect(screen, GOLD_DARK, r, 2, border_radius=6)
-                val = planilla[c]
-                t = f"{c}: {'-' if val is None else val}"
-                screen.blit(font.render(t, True, WHITE), (r.x + 10, r.y + 4))
-
-            # ---- BOTONES ----
-            btn_tirar = pygame.Rect(SCREEN_W - 200, 420, 140, 48)
-            btn_anotar = pygame.Rect(SCREEN_W - 200, 480, 140, 48)
-
-            draw_button(screen, font, btn_tirar, f"Tirar ({tiros})", mouse_pos, mouse_pressed,
-                        BTN_BLUE, (BTN_BLUE[0]+20, BTN_BLUE[1]+20, BTN_BLUE[2]+20))
-
-            draw_button(screen, font, btn_anotar, "Anotar", mouse_pos, mouse_pressed,
-                        BTN_RED, (BTN_RED[0]+20, BTN_RED[1]+20, BTN_RED[2]+20))
-
-            pygame.display.flip()
-            clock.tick(FPS)
 
         turno += 1
 
