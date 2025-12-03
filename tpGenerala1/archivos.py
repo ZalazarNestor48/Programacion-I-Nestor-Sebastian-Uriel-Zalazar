@@ -15,14 +15,25 @@ def guardar_puntaje(nombre: str, puntos: int, archivo: str = PUNTAJES_CSV) -> No
 def leer_puntajes_csv(archivo: str = PUNTAJES_CSV) -> list:
     if not os.path.exists(archivo):
         return []
+        
     with open(archivo, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         resultados = []
+        
         for row in reader:
-            try:
-                resultados.append((row['nombre'], int(row['puntaje'])))
-            except Exception:
+
+            if 'nombre' not in row or 'puntaje' not in row:
                 continue
+
+            puntaje_str = row['puntaje']
+            if not puntaje_str.isdigit():
+                continue
+
+            nombre = row['nombre']
+            puntaje = int(puntaje_str)
+
+            resultados.append((nombre, puntaje))
+
     resultados.sort(key=lambda x: x[1], reverse=True)
     return resultados
 
